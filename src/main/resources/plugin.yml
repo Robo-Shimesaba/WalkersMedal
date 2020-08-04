@@ -1,0 +1,20 @@
+name: WalkersMedal
+version: @version@
+main: walkersmedal.walkersmedal.WalkersMedal
+api-version: 1.16
+author: '_Ghast_'
+
+permissions:
+  WalkCountCommandAllowUse:
+    default: false
+  WalkersMedalTraderCommandAllowUse:
+    default: false
+
+commands:
+  WalkCount:
+    Permission: WalkCountCommandAllowUse
+    usage: 'not player name'
+  WalkersMedalTrader:
+    Permission: WalkersMedalTraderCommandAllowUse
+  WalkersMedalPermission:
+    Permission: OP
