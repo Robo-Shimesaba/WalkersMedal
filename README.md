@@ -14,8 +14,10 @@ OPのみ実行可能　権限の譲渡又は剝奪をすることができます
 
 権限(Permission)
 
-WalkCountCommandAllowUse 
+WalkCountCommandAllowUse
+
 Walkcountコマンドを使用することができるようになります。
 
 WalkersMedalTraderCommandAllowUse
+
 WalkersMedalTraderコマンドを使用することができるようになります。
