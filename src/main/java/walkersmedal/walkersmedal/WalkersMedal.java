@@ -27,7 +27,10 @@ import org.bukkit.plugin.java.JavaPlugin;
 
 import java.io.File;
 import java.io.IOException;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Objects;
+import java.util.UUID;
 
 public class WalkersMedal extends JavaPlugin implements Listener {
 
@@ -38,7 +41,11 @@ public class WalkersMedal extends JavaPlugin implements Listener {
     public void onEnable() {
         // Plugin startup logic
         PluginManager pl = Bukkit.getServer().getPluginManager();
-        getCommand("WalkersMedalPermission").setTabCompleter(this);
+        Objects.requireNonNull(getCommand("given")).setExecutor(new GiveCommand());
+        Objects.requireNonNull(getCommand("test")).setExecutor(new GiveCommand());
+        Objects.requireNonNull(getCommand("given")).setTabCompleter(new GiveCommandTabCompleter());
+        Objects.requireNonNull(getCommand("WalkersMedalPermission")).setTabCompleter(this);
+
         pl.registerEvents(this, this);
         if (!this.getDataFolder().exists()) {
             this.getDataFolder().mkdir();
@@ -97,7 +104,7 @@ public class WalkersMedal extends JavaPlugin implements Listener {
             return;
         } else {
             config.set(String.valueOf(player.getUniqueId()), 0);
-            config.set(String.valueOf(player.getUniqueId()) + "medal", 0);
+            config.set(player.getUniqueId() + "medal", 0);
             this.saveConfig();
         }
     }
@@ -107,7 +114,7 @@ public class WalkersMedal extends JavaPlugin implements Listener {
 
         Player player = e.getPlayer();
         Configuration config = this.getConfig();
-        int counter = config.getInt(String.valueOf(player.getUniqueId()) + "medal");
+        int counter = config.getInt(player.getUniqueId() + "medal");
         int count = config.getInt(String.valueOf(player.getUniqueId()));
 
         if (!player.isFlying()) {
@@ -137,7 +144,7 @@ public class WalkersMedal extends JavaPlugin implements Listener {
                         count = 0;
                         int ic = counter + 1;
                         config.set(String.valueOf(player.getUniqueId()), count);
-                        config.set(String.valueOf(player.getUniqueId()) + "medal", ic);
+                        config.set(player.getUniqueId() + "medal", ic);
                         this.saveConfig();
                     }
                 }
@@ -195,8 +202,8 @@ public class WalkersMedal extends JavaPlugin implements Listener {
                     Configuration config = this.getConfig();
                     int s = config.getInt(String.valueOf(p.getUniqueId()));
                     p.sendMessage("現在の次のメダル獲得までの歩数" + (1250 - s));
-                    int ss = config.getInt(String.valueOf(p.getUniqueId()) + "medal");
-                    p.sendMessage("現在の獲得可能なメダルの枚数" + String.valueOf(ss));
+                    int ss = config.getInt(p.getUniqueId() + "medal");
+                    p.sendMessage("現在の獲得可能なメダルの枚数" + ss);
                     return true;
                 }
             } else return true;
@@ -211,7 +218,9 @@ public class WalkersMedal extends JavaPlugin implements Listener {
                 double y = loc.getY();
                 double x = loc.getX();
                 double z = loc.getZ();
-                Location sentry = new Location(w, x, y, z);
+                float yaw = loc.getYaw();
+                float pitch = loc.getPitch();
+                Location sentry = new Location(w, x, y, z, yaw, pitch);
                 Creature villager = (Creature) w.spawnEntity(sentry, EntityType.VILLAGER);
                 villager.setAI(false);
                 villager.setCustomNameVisible(true);
@@ -235,6 +244,44 @@ public class WalkersMedal extends JavaPlugin implements Listener {
         Player player = e.getPlayer();
         boolean uuid = Trader.contains(e.getRightClicked().getUniqueId() + "Trader");
         if (uuid) {
+            if (player.isSneaking()) {
+                Inventory inv = Bukkit.createInventory(null, 9, ChatColor.AQUA + "Walkers Medal Trader");
+
+                //SLOT0
+                ItemStack Close = new ItemStack(Material.RED_WOOL);
+                ItemMeta CloseMeta = Close.getItemMeta();
+                CloseMeta.setDisplayName(ChatColor.UNDERLINE + "GUIを閉じます。");
+                Close.setItemMeta(CloseMeta);
+                inv.setItem(0, Close);
+
+                //SLOT4
+                ItemStack WalkersMedal = new ItemStack(Material.EMERALD);
+                ItemMeta WalkersMedalMeta = WalkersMedal.getItemMeta();
+                WalkersMedalMeta.addEnchant(Enchantment.PROTECTION_FIRE, 1, true);
+                WalkersMedalMeta.setDisplayName(ChatColor.AQUA + "ウォーカーズメダル ");
+                WalkersMedalMeta.addItemFlags(ItemFlag.HIDE_ENCHANTS);
+                ArrayList<String> lore = new ArrayList<String>();
+                lore.add("1250歩マイに贈られるメダル");
+                lore.add("通常の通貨としての価値もある");
+                lore.add("");
+                lore.add(ChatColor.GREEN + "クリックすると取得可能個数分メダルがもらえます");
+                WalkersMedalMeta.setLore(lore);
+                WalkersMedal.setItemMeta(WalkersMedalMeta);
+                inv.setItem(4, WalkersMedal);
+
+                //SLOT8
+                ItemStack count = new ItemStack(Material.PAPER);
+                ItemMeta countMeta = count.getItemMeta();
+                Configuration config = this.getConfig();
+                int counter = config.getInt(player.getUniqueId() + "medal");
+                countMeta.setDisplayName(ChatColor.UNDERLINE + "現在の取得可能個数:" + counter);
+                count.setItemMeta(countMeta);
+                inv.setItem(8, count);
+
+                player.openInventory(inv);
+
+            }
+
             Inventory inv = Bukkit.createInventory(null, 9, ChatColor.AQUA + "Walkers Medal Trader");
 
             //SLOT0
@@ -263,7 +310,7 @@ public class WalkersMedal extends JavaPlugin implements Listener {
             ItemStack count = new ItemStack(Material.PAPER);
             ItemMeta countMeta = count.getItemMeta();
             Configuration config = this.getConfig();
-            int counter = config.getInt(String.valueOf(player.getUniqueId()) + "medal");
+            int counter = config.getInt(player.getUniqueId() + "medal");
             countMeta.setDisplayName(ChatColor.UNDERLINE + "現在の取得可能個数:" + counter);
             count.setItemMeta(countMeta);
             inv.setItem(8, count);
@@ -277,7 +324,7 @@ public class WalkersMedal extends JavaPlugin implements Listener {
         Player player = (Player) e.getWhoClicked();
 
         Configuration config = this.getConfig();
-        int counter = config.getInt(String.valueOf(player.getUniqueId()) + "medal");
+        int counter = config.getInt(player.getUniqueId() + "medal");
 
         InventoryView open = e.getView();
         ItemStack item = e.getCurrentItem();
@@ -309,18 +356,17 @@ public class WalkersMedal extends JavaPlugin implements Listener {
                 WalkersMedal.setAmount(counter);
                 HashMap<Integer, ItemStack> amount = inv.addItem(WalkersMedal);
                 if (!amount.containsKey(0)) {
-                    config.set(player.getUniqueId() + "medal",0);
+                    config.set(player.getUniqueId() + "medal", 0);
                     this.saveConfig();
                     return;
                 }
-                config.set(player.getUniqueId() + "medal",amount.get(0).getAmount());
+                config.set(player.getUniqueId() + "medal", amount.get(0).getAmount());
                 this.saveConfig();
-                }
+            }
 
             if (item.getType().equals(Material.PAPER)) {
                 e.setCancelled(true);
             }
-                return;
-            }
         }
     }
+}
