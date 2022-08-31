@@ -25,25 +25,22 @@ import org.bukkit.permissions.PermissionAttachment;
 import org.bukkit.plugin.PluginManager;
 import org.bukkit.plugin.java.JavaPlugin;
 
-import java.io.File;
-import java.io.IOException;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.Objects;
-import java.util.UUID;
+import java.io.*;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
+import java.util.*;
 
 public class WalkersMedal extends JavaPlugin implements Listener {
 
     private FileConfiguration Trader;
     private File TraderFile;
+    private Path workDirectory = Paths.get(this.getDataFolder().getPath()+"/PlayerData");
 
     @Override
     public void onEnable() {
         // Plugin startup logic
         PluginManager pl = Bukkit.getServer().getPluginManager();
-        Objects.requireNonNull(getCommand("given")).setExecutor(new GiveCommand());
-        Objects.requireNonNull(getCommand("test")).setExecutor(new GiveCommand());
-        Objects.requireNonNull(getCommand("given")).setTabCompleter(new GiveCommandTabCompleter());
         Objects.requireNonNull(getCommand("WalkersMedalPermission")).setTabCompleter(this);
 
         pl.registerEvents(this, this);
@@ -51,6 +48,11 @@ public class WalkersMedal extends JavaPlugin implements Listener {
             this.getDataFolder().mkdir();
         }
 
+        try {
+            Files.createDirectory(workDirectory);
+        } catch (IOException e) {
+            e.printStackTrace();
+        }
         TraderFile = new File(this.getDataFolder(), "Trader.yml");
 
         if (!TraderFile.exists()) {
@@ -72,24 +74,6 @@ public class WalkersMedal extends JavaPlugin implements Listener {
         this.saveDefaultConfig();
     }
 
-    public FileConfiguration getTrader() {
-        return Trader;
-    }
-
-    //public void saveTraderFile() {
-    //    try {
-    //        Trader.save(TraderFile);
-    //        Bukkit.getServer().getConsoleSender().sendMessage("done save");
-    //    } catch (IOException e) {
-    //        Bukkit.getServer().getConsoleSender().sendMessage("not save");
-    //    }
-    //}
-
-    //   public void reloadTraderFile() {
-    //       Trader = YamlConfiguration.loadConfiguration(TraderFile);
-    //       Bukkit.getServer().getConsoleSender().sendMessage("done reload");
-    //   }
-
     @Override
     public void onDisable() {
         // Plugin shutdown logic
@@ -98,15 +82,42 @@ public class WalkersMedal extends JavaPlugin implements Listener {
     @EventHandler
     public void onjoin(PlayerJoinEvent e) {
         Player player = e.getPlayer();
-        FileConfiguration config = this.getConfig();
+        //FileConfiguration config = this.getConfig();
 
-        if (this.getConfig().contains(String.valueOf(player.getUniqueId()))) {
-            return;
-        } else {
-            config.set(String.valueOf(player.getUniqueId()), 0);
-            config.set(player.getUniqueId() + "medal", 0);
-            this.saveConfig();
+        if (!Files.exists(Path.of(workDirectory +"/"+ player.getUniqueId()+".scw"))) {
+            try {
+                Files.createFile(Path.of(workDirectory +"/"+ player.getUniqueId()+".scw"));
+                File file = new File(String.valueOf(workDirectory),player.getUniqueId()+".scw");
+                if (!file.canWrite()) {
+                    file.setWritable(true);
+                }
+
+                Map<String,Integer> userdata = new HashMap<>();
+                userdata.put("walk",0);
+                userdata.put("combat",0);
+                userdata.put("mining",0);
+                userdata.put("lumberjack",0);
+                userdata.put("fishing",0);
+                userdata.put("build",0);
+                userdata.put("bossBattle",0);
+                userdata.put("trade",0);
+
+                ObjectOutputStream export = new ObjectOutputStream(new FileOutputStream(file));
+                export.writeObject(userdata);
+
+
+            } catch (IOException ex) {
+                throw new RuntimeException(ex);
+            }
         }
+
+        //if (this.getConfig().contains(String.valueOf(player.getUniqueId()))) {
+        //    return;
+        //} else {
+        //    config.set(String.valueOf(player.getUniqueId()), 0);
+        //    config.set(player.getUniqueId() + "medal", 0);
+        //    this.saveConfig();
+        //}
     }
 
     @EventHandler
@@ -156,7 +167,27 @@ public class WalkersMedal extends JavaPlugin implements Listener {
     public boolean onCommand(CommandSender sender, Command command, String label, String[] args) {
         Player player = (Player) sender;
 
-        if (command.getName().equalsIgnoreCase("WalkersMedalPermission")) {
+        if (command.getName().equalsIgnoreCase("filePreview")) {
+            File file = new File(String.valueOf(workDirectory), player.getUniqueId() + ".scw");
+            Map<String, Integer> map  = new HashMap<>();
+            try {
+                ObjectInputStream input = new ObjectInputStream(new FileInputStream(file));
+                map = (Map<String, Integer>) input.readObject();
+            } catch (ClassNotFoundException | IOException e) {
+                throw new RuntimeException(e);
+            }
+
+            player.sendMessage("*現在の歩数: "+map.get("walk"));
+            player.sendMessage("*討伐数: "+map.get("combat"));
+            player.sendMessage("*採掘数: "+map.get("mining"));
+            player.sendMessage("*伐採数: "+map.get("lumberjack"));
+            player.sendMessage("*釣り回数: "+map.get("fishing"));
+            player.sendMessage("*ブロック設置回数: "+map.get("build"));
+            player.sendMessage("*ボス討伐数: "+map.get("bossBattle"));
+            player.sendMessage("*取引回数: "+map.get("trade"));
+        }
+
+            if (command.getName().equalsIgnoreCase("WalkersMedalPermission")) {
             HashMap<UUID, PermissionAttachment> perms = new HashMap<>();
             PermissionAttachment attachment = player.addAttachment(this);
             perms.put(player.getUniqueId(), attachment);

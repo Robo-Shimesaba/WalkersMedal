@@ -10,6 +10,8 @@ permissions:
     default: OP
 
 commands:
+  filePreview:
+
   WalkCount:
     Permission: WalkCountCommandAllowUse
     usage: 'not player name'
